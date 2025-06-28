@@ -1,10 +1,20 @@
 import numpy as np
 from scipy.io import wavfile
 import matplotlib.pyplot as plt
+import pathlib
 amount = 1000
-#fs, data = wavfile.read("D:\\adsb.2021-11-26T15_03_30_573.wav")
-fs, data = wavfile.read("D:\\adsb.2021.wav")
-file= "D:\\adsb.2021.wav"
+def path_one_dir_above(filename):
+    # Get the current file's directory
+    current_dir = pathlib.Path(__file__).parent
+    # Go one directory up
+    parent_dir = current_dir.parent
+    # Return the full path to the file in the parent directory
+    return parent_dir / filename
+file1 = path_one_dir_above("adsb.2021.wav")
+print(file1)
+fs, data = wavfile.read(file1)
+file= "adsb.2021.wav"
+
 import numpy as np
 from scipy.io import wavfile
 import pyModeS as pms
