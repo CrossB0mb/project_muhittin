@@ -2,25 +2,92 @@ import numpy as np
 from scipy.io import wavfile
 import matplotlib.pyplot as plt
 import pathlib
+import soundfile as sf
 amount = 1000
-def path_one_dir_above(filename):
+def path_n_dirs_above(filename, levels_up):
     # Get the current file's directory
     current_dir = pathlib.Path(__file__).parent
-    # Go one directory up
-    parent_dir = current_dir.parent
-    # Return the full path to the file in the parent directory
-    return parent_dir / filename
-file1 = path_one_dir_above("adsb.2021.wav")
+
+    # Go up 'levels_up' directories
+    for _ in range(levels_up):
+        current_dir = current_dir.parent
+
+    # Return the full path to the file in the target directory
+    return current_dir / filename
+
+file1 = path_n_dirs_above("adsb.2021.wav", 2)
+
+file1 = str(file1)  # Convert Path object to string for wavfile.read compatibility
+
+print(f"Using file: {file1}")
+print(type(file1))
+
+def compute_and_plot_fft(filepath):
+    # Load WAV file
+    data, sample_rate = sf.read(filepath)
+
+    if data.ndim != 2 or data.shape[1] != 2:
+        raise ValueError("Expected stereo WAV file with I and Q channels.")
+
+    # Extract and normalize I/Q
+    I = data[:, 0]
+    Q = data[:, 1]
+
+    if np.issubdtype(data.dtype, np.integer):
+        max_val = np.iinfo(data.dtype).max
+        I = I / max_val
+        Q = Q / max_val
+
+    # Combine into complex IQ signal
+    iq = I + 1j * Q
+
+    # Compute FFT
+    n = len(iq)
+    freq = np.fft.fftfreq(n, d=1/sample_rate)
+    spectrum = np.fft.fft(iq)
+    
+    # Shift for center-zero plot
+    freq_shifted = np.fft.fftshift(freq)
+    spectrum_shifted = np.fft.fftshift(spectrum)
+    
+    # Convert to dB
+    magnitude_db = 20 * np.log10(np.abs(spectrum_shifted) + 1e-12)
+
+    # Plot spectrum
+    plt.figure(figsize=(10, 4))
+    plt.plot(freq_shifted, magnitude_db, color='navy')
+    plt.title('Fourier Transform of IQ Signal')
+    plt.xlabel('Frequency [Hz]')
+    plt.ylabel('Magnitude [dB]')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
+
+
 print(file1)
-fs, data = wavfile.read(file1)
-file= "adsb.2021.wav"
+fs, data = sf.read(file1)
+file= file1
 
 import numpy as np
 from scipy.io import wavfile
 import pyModeS as pms
 
+def visualize_iq_samples(iq_samples, sample_rate):
+    time = np.arange(len(iq_samples)) / sample_rate
+    plt.figure(figsize=(12, 6))
+    plt.plot(time, np.real(iq_samples), label='I (In-phase)', alpha=0.5)
+    plt.plot(time, np.imag(iq_samples), label='Q (Quadrature)', alpha=0.5)
+    plt.title('I/Q Samples')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Amplitude')
+    plt.legend()
+    plt.grid()
+    plt.show()
+
 def read_iq_from_wav(filename):
-    sample_rate, data = wavfile.read(filename)
+    data, sample_rate = sf.read(filename)
     # Assuming stereo: I = channel 0, Q = channel 1
     if data.ndim == 2:
         iq_samples = data[:,0].astype(np.float32) + 1j * data[:,1].astype(np.float32)
@@ -115,7 +182,7 @@ def decode_adsb_with_pymodes(bits):
     return hex_msg
 
 def main():
-    filename = "D:\\adsb.2021.wav" # Replace with your file path
+    filename = file1 # Replace with your file path
     sample_rate, iq_samples = read_iq_from_wav(filename)
 
     # Process only first 1 million samples (1 second at 1 MHz)
@@ -144,8 +211,9 @@ def main():
         print(f"\nValid message #{valid_messages} at sample {start}")
 
         decode_adsb_with_pymodes(bits)
-
+    
     print(f"\nTotal valid ADS-B messages decoded: {valid_messages}")
-
+    compute_and_plot_fft(file1)
+    #visualize_iq_samples(iq_samples, sample_rate)
 if __name__ == "__main__":
     main()
