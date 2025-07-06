@@ -1,20 +1,33 @@
 import folium
 import pandas as pd
+import time
 
-# Load your data
-df = pd.read_csv("D:\\tasarim_proje\project_muhittin\\adsb_test_files\\adsb_deneme.csv")  # Replace with your data path
+def create_map():
+    df = pd.read_csv("adsb_data_info.csv")  # Fetch latest data
 
-# Create a base map centered at a rough central coordinate
-m = folium.Map(location=[df["Latitude"].mean(), df["Longitude"].mean()], zoom_start=6)
+    m = folium.Map(location=[df["Latitude"].mean(), df["Longitude"].mean()], zoom_start=4)
 
-# Add plane markers
-for _, row in df.iterrows():
-    popup_text = f"Callsign: {row['Callsign']}<br>Altitude: {row['Altitude']} ft"
-    folium.Marker(
-        location=[row['Latitude'], row['Longitude']],
-        popup=popup_text,
-        icon=folium.Icon(color='blue', icon='plane', prefix='fa')
-    ).add_to(m)
+    for _, row in df.iterrows():
+        popup = f"Callsign: {row['Callsign']}<br>Altitude: {row['Altitude']} ft"
+        folium.Marker(
+            location=[row['Latitude'], row['Longitude']],
+            popup=popup,
+            icon=folium.Icon(color='blue', icon='plane', prefix='fa')
+        ).add_to(m)
 
-# Save to HTML
-m.save("adsb_planes_map.html")
+    m.save("adsb_planes_map.html")
+
+    # Inject refresh tag
+    with open("adsb_planes_map.html", "r", encoding="utf-8") as f:
+        html = f.read()
+
+    html = html.replace("<head>", "<head>\n<meta http-equiv='refresh' content='10'>\n")
+
+    with open("adsb_planes_map.html", "w", encoding="utf-8") as f:
+        f.write(html)
+
+# Repeat every 10 seconds
+while True:
+    create_map()
+    print("Map updated.")
+    time.sleep(10)
