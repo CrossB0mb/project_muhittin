@@ -152,6 +152,37 @@ def decoding_until_callsign(msg):
     info.append([icao, decoded_callsign_str, int(downlink_format, 2), emitter_category, int(type_code, 2), surveillance_status, nic_supplement_b])
     #print(info) # print list
     return info # return list
+
+def hex_to_bin(hex_str):
+    """
+    Hexadecimal string'i 112-bitlik binary string'e çevirir.
+    """
+    bin_str = bin(int(hex_str, 16))[2:].zfill(112)
+    return bin_str
+
+def extract_cpr_from_adsb(hex_msg):
+    """
+    ADS-B hexadecimal mesajından LAT-CPR ve LON-CPR değerlerini çıkarır.
+    
+    :param hex_msg: ADS-B mesajı (28 karakterlik hex string, örn: '8D4840D6202CC371C32CE0576098')
+    :return: lat_cpr (int), lon_cpr (int), frame_flag (0=even, 1=odd)
+    """
+    if len(hex_msg) != 28:
+        raise ValueError("ADS-B message must be 28 hex characters (112 bits).")
+    
+    binary_msg = hex_to_bin(hex_msg)
+    
+    lat_cpr_bits = binary_msg[54:72]  # bits 55–71 (Python index 54–71)
+    lon_cpr_bits = binary_msg[72:89]  # bits 72–88 (Python index 71–88)
+
+    frame_flag = int(binary_msg[53])  # bit 54: CPR frame flag (even/odd)
+
+    lat_cpr = int(lat_cpr_bits, 2)
+    lon_cpr = int(lon_cpr_bits, 2)
+
+    return lat_cpr, lon_cpr, frame_flag
+
+
 aircraft_info = decoding_until_callsign(msg) # call function
 
 def even_odd_finder(given_msg):
@@ -203,4 +234,31 @@ elif lat == 87:
 elif lat > 87:
     NL_lat_numpy = 1
 print(f"NL_lat: {NL_lat_numpy}")
+
+cpr_constant = 131072
+messages = [
+    "8D40621D58C382D690C8AC2863A7",  # Example message 1
+    "8D40621D58C386435CC412692AD6"   # Example message 2
+]
+
+lat_counter = 0   
+cpr_data = [["lat_cpr_even", "lon_cpr_even", "lat_cpr_odd", "lon_cpr_odd"]]
+for msg in messages:
+    lat_cpr, lon_cpr, frame_flag = extract_cpr_from_adsb(msg)
+    print(f"LAT-CPR: {lat_cpr}, LON-CPR: {lon_cpr}, Frame Flag: ","Odd" if frame_flag else "Even")
+    if frame_flag == 0:
+        lat_cpr_even = lat_cpr / cpr_constant
+        lon_cpr_even = lon_cpr / cpr_constant
+    elif frame_flag == 1:
+        lat_cpr_odd = lat_cpr / cpr_constant
+        lon_cpr_odd = lon_cpr / cpr_constant
+    else:
+        print("Invalid frame flag", frame_flag)
+        continue
+    lat_counter += 1
+    if lat_counter == 2:
+        cpr_data.append([lat_cpr_even, lon_cpr_even, lat_cpr_odd, lon_cpr_odd])
+        lat_counter = 0
+    
+print("cpr_data: ", cpr_data) # print cpr data
 
