@@ -1,0 +1,3 @@
+icao,decoded_callsign_str,downlink_format,emitter_category,type_code,surveillance_status,nic_supplement_b
+010000000110001000011101,08kvl,17,101,11,00,0
+010000000110001000011101,08ycwlpr,17,101,11,00,0

@@ -1,4 +1,7 @@
 import pyModeS as pms
+import math
+import numpy as np
+
 msg = "8D4840D6202CC371C32CE0576098"
 df = pms.df(msg)
 tc = pms.typecode(msg)
@@ -19,7 +22,8 @@ print(f"CallSign: {pms.adsb.callsign(msg)}")
 #-----------------------------------------------
 
 generator = 1111111111111010000001001
-msg = ("8D4840D6202CC371C32CE0576098") # 112 bits
+#msg = ("8D4840D6202CC371C32CE0576098") # 112 bits
+msg = ("33C596B33AE074CA9646F8EFF336")
 msg_stock = msg # save original message
 msg = int(msg, 16) # convert to int
 msg = bin(msg)[2:] # convert to binary string
@@ -33,6 +37,7 @@ if crc == 0:
 else:
     print("CRC is invalid")
 msg = ("8D4840D6202CC371C32CE0576098") # 112 bits
+msg = ("33C596B33AE074CA9646F8EFF336")
 decoder = {
     "1": "a",
     "2": "b",
@@ -72,6 +77,16 @@ decoder = {
     "56": "8",
     "57": "9", 
 }
+
+def write_to_csv(data, filename):
+    import csv
+    with open(f"{filename}.csv", mode='w', newline='') as file:
+        writer = csv.writer(file)
+        for row in data:
+            writer.writerow(row)
+
+
+
 
 def decoding_until_callsign(msg):
     #* decoding dc ec tc etc.
@@ -133,7 +148,7 @@ def decoding_until_callsign(msg):
     #! icao = int(icao, 2) # convert to int
     print("icao: ", icao) # convert to int
     
-    info = [["icao, decoded_callsign_str, downlink_format, emitter_category, type_code, surveillance_status, nic_supplement_b"]]
+    info = [["icao", "decoded_callsign_str", "downlink_format", "emitter_category", "type_code", "surveillance_status", "nic_supplement_b"]]
     info.append([icao, decoded_callsign_str, int(downlink_format, 2), emitter_category, int(type_code, 2), surveillance_status, nic_supplement_b])
     #print(info) # print list
     return info # return list
@@ -156,11 +171,36 @@ print("-------------------------------------------------------------------------
 even_odd_finder(msg2) # call function
 y = decoding_until_callsign(msg2) # call function
 print("msg2: ", msg2) # print original message
-
+z = x
+z.append(y[1]) # append y[1] to x[1]
 if x[1][0] == y[1][0]:
     print("Same ICAO")
+    print(z)
+    write_to_csv(z, "aircraft_info") # write to csv file
 else:
     print("Different ICAO")
 
-#a = pms.icao(msg1) # ICAO address
-#b = pms.icao(msg2) # ICAO address
+#TODO: 3.2 CPR parameters and functions
+
+NZ = 15
+lat = -87 #! lat data need to be set via msg. So it can be dynamic.
+
+
+NL_lat_numpy = np.floor((2 * np.pi) / (
+    np.arccos(1 - ((1 - np.cos(np.pi / (2 * NZ))) /
+    (np.cos((np.pi / 180) * lat) ** 2)))
+))
+
+# NL value fixation based on latitude limitations
+if lat < -87:
+    NL_lat_numpy = 1
+elif lat == -87:
+    NL_lat_numpy = 2
+elif lat == 0:
+    NL_lat_numpy = 59
+elif lat == 87:
+    NL_lat_numpy = 2
+elif lat > 87:
+    NL_lat_numpy = 1
+print(f"NL_lat: {NL_lat_numpy}")
+
